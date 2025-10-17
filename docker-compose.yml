@@ -4,17 +4,10 @@
 # This file is used to configure the docker container for the Derafu Sites Server.
 #
 
-# Name of the docker container.
-name: ${SERVER_NAME:-derafu-sites-server-python}
-
 services:
 
   # Main web server service using Django and Caddy
   webserver:
-
-    # Add Linux capabilities to the container
-    cap_add:
-      - SYS_ADMIN  # Allows the container to perform system administration tasks
 
     # Build configuration for the container
     build:
@@ -28,11 +21,11 @@ services:
         WWW_GROUP: ${WWW_GROUP:-www-data}  # Group for web server operations
 
     # Name of the container
-    container_name: ${SERVER_NAME:-derafu-sites-server}-python-caddy
+    container_name: ${SERVER_NAME:-python313-caddy}
 
     # Environment variables passed to the container
     environment:
-      SERVER_NAME: ${SERVER_NAME:-derafu-sites-server}-python-caddy  # Server name
+      SERVER_NAME: ${SERVER_NAME:-python313-caddy}  # Server name
       CADDY_DEBUG: ${CADDY_DEBUG:-}  # Debug mode for Caddy
       CADDY_EMAIL: ${CADDY_EMAIL:-admin@example.com}  # Email for Caddy SSL certificates
       CADDY_LOG_SIZE: ${CADDY_LOG_SIZE:-100mb}  # Maximum size of Caddy logs

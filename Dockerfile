@@ -47,6 +47,7 @@ RUN \
     libharfbuzz-dev \
     libjpeg-dev \
     liblapack-dev \
+    libnss3-tools \
     libopenblas-dev \
     libpango1.0-dev \
     libpq-dev \
@@ -177,7 +178,7 @@ COPY config/logrotate/celery /etc/logrotate.d/celery
 COPY config/cron/logrotate /etc/cron.d/logrotate
 
 # Copy Supervisor configuration.
-COPY config/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY config/supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
 # Copy scripts.
 
@@ -187,4 +188,4 @@ RUN chmod +x /scripts/start_procfile_supervisord.sh
 RUN mkdir -p /run/gunicorn && chmod 777 /run/gunicorn
 
 # Use Supervisor as the main process.
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]

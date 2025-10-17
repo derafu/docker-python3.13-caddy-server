@@ -12,16 +12,16 @@
 # GLOBAL CONFIGURATION
 # ==============================================================================
 {
-    # Debug mode (optional, use 'debug' or 'error')
-    {$CADDY_DEBUG}
+	# Debug mode (optional, use 'debug' or 'error')
+	{$CADDY_DEBUG}
 
-    # Email for SSL certificates
-    email {$CADDY_EMAIL}
+	# Email for SSL certificates
+	email {$CADDY_EMAIL}
 
-    # Allow on-demand TLS certificates
-    on_demand_tls {
-        ask http://localhost:9090/api/ask
-    }
+	# Allow on-demand TLS certificates
+	on_demand_tls {
+		ask http://localhost:9090/api/ask
+	}
 }
 
 # ==============================================================================
@@ -40,43 +40,43 @@
 #   6. Otherwise, it will return a 404 status.
 #
 (normalize_domain) {
-    # Remove the .local extension from the domain if exists.
-    map     {domain_input}          {non_local_domain} {
-            ~(.*)\.local$           "${1}"
-            default                 "{domain_input}"
-    }
+	# Remove the .local extension from the domain if exists.
+	map {domain_input} {non_local_domain} {
+		~(.*)\.local$ "${1}"
+		default "{domain_input}"
+	}
 
-    # Remove environment subdomain (stage, dev, qa, etc) if exists.
-    # This handles patterns like app.stage.example.com -> app.example.com
-    # or www.dev.example.com -> www.example.com
-    map     {non_local_domain}      {no_env_domain} {
-            ~^([^.]+)\.(local|dev|qa|stage)\.(.*?)$     "${1}.${3}"
-            default                               "{non_local_domain}"
-    }
+	# Remove environment subdomain (stage, dev, qa, etc) if exists.
+	# This handles patterns like app.stage.example.com -> app.example.com
+	# or www.dev.example.com -> www.example.com
+	map {non_local_domain} {no_env_domain} {
+		~^([^.]+)\.(local|dev|qa|stage)\.(.*?)$ "${1}.${3}"
+		default "{non_local_domain}"
+	}
 
-    # Add www to the domain if it doesn't exist and the domain is a second level
-    # domain.
-    map     {no_env_domain}        {real_domain} {
-#            ~^(www\..+)$            "${1}"
-#            ~^([^.]+\.[^.]+)$       "www.${1}"
-            default                 "{no_env_domain}"
-    }
+	# Add www to the domain if it doesn't exist and the domain is a second level
+	# domain.
+	map {no_env_domain} {real_domain} {
+		#            ~^(www\..+)$            "${1}"
+		#            ~^([^.]+\.[^.]+)$       "www.${1}"
+		default "{no_env_domain}"
+	}
 }
 
 # ==============================================================================
 # HTTP -> HTTPS REDIRECTION
 # ==============================================================================
 :80 {
-    # Add basic logging.
-    log {
-        output file /var/log/caddy/http_redirect.log {
-            roll_size 10mb
-            roll_keep 3
-        }
-    }
+	# Add basic logging.
+	log {
+		output file /var/log/caddy/http_redirect.log {
+			roll_size 10mb
+			roll_keep 3
+		}
+	}
 
-    # Redirect all HTTP traffic to HTTPS.
-    redir https://{host}{uri} permanent
+	# Redirect all HTTP traffic to HTTPS.
+	redir https://{host}{uri} permanent
 }
 
 # ==============================================================================
@@ -85,60 +85,60 @@
 #
 # HTTPS - handle all actual processing.
 :443 {
-    # Normalize the domain to the real domain.
-    map {host} {domain_input} {
-        default "{host}"
-    }
-    import normalize_domain
+	# Normalize the domain to the real domain.
+	map {host} {domain_input} {
+		default "{host}"
+	}
+	import normalize_domain
 
-    log {
-        output file /var/log/caddy/access.log {
-            roll_size {$CADDY_LOG_SIZE}
-            roll_keep {$CADDY_LOG_KEEP}
-        }
-    }
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size {$CADDY_LOG_SIZE}
+			roll_keep {$CADDY_LOG_KEEP}
+		}
+	}
 
-    tls {
-        issuer {$CADDY_HTTPS_ISSUER}
-        on_demand
-    }
+	tls {
+		issuer {$CADDY_HTTPS_ISSUER}
+		on_demand
+	}
 
-    @local_domain vars_regexp local_domain {host} ^(?P<clean_domain>.+)\.local$
-    @production not host *.local
+	@local_domain vars_regexp local_domain {host} ^(?P<clean_domain>.+)\.local$
+	@production not host *.local
 
-    # ==============================
-    # STATIC FILES Y MEDIA
-    # ==============================
-    handle_path /static/* {
-        root * {$WWW_ROOT_PATH}/{real_domain}/current/static
-        file_server
-    }
+	# ==============================
+	# STATIC FILES Y MEDIA
+	# ==============================
+	handle_path /static/* {
+		root * {$WWW_ROOT_PATH}/{real_domain}/current/static
+		file_server
+	}
 
-    handle_path /media/* {
-        root * {$WWW_ROOT_PATH}/{real_domain}/current/media
-        file_server
-    }
+	handle_path /media/* {
+		root * {$WWW_ROOT_PATH}/{real_domain}/current/media
+		file_server
+	}
 
-    # ==============================
-    # LOCAL (.local)
-    # ==============================
-    handle @local_domain {
-        reverse_proxy unix//run/gunicorn/{re.local_domain.clean_domain}.sock {
-            header_up Host {host}
-        }
-    }
+	# ==============================
+	# LOCAL (.local)
+	# ==============================
+	handle @local_domain {
+		reverse_proxy unix//run/gunicorn/{re.local_domain.clean_domain}.sock {
+			header_up Host {host}
+		}
+	}
 
-    # ==============================
-    # PRODUCTION (non .local)
-    # ==============================
-    handle @production {
-        reverse_proxy unix//run/gunicorn/{real_domain}.sock {
-            header_up X-Forwarded-Host {domain_input}
-        }
-    }
+	# ==============================
+	# PRODUCTION (non .local)
+	# ==============================
+	handle @production {
+		reverse_proxy unix//run/gunicorn/{real_domain}.sock {
+			header_up X-Forwarded-Host {domain_input}
+		}
+	}
 
-    # Fallback
-    respond "Domain {domain_input} (Site: {real_domain}) is not available." 404
+	# Fallback
+	respond "Domain {domain_input} (Site: {real_domain}) is not available." 404
 }
 
 # ==============================================================================
@@ -155,31 +155,31 @@
 # by the {$WWW_ROOT_PATH}/.admin/webhook.php file.
 #
 :9090 {
-    # Handle TLS ask.
-    # Normalize the domain to the real domain.
-    # Check if the real domain exists as a directory in the {$WWW_ROOT_PATH}.
-    # If the real domain exists, return a 200 status.
-    root * {$WWW_ROOT_PATH}
-    map {query.domain} {domain_input} {
-        default "{query.domain}"
-    }
-    import normalize_domain
-    @ask <<CEL
+	# Handle TLS ask.
+	# Normalize the domain to the real domain.
+	# Check if the real domain exists as a directory in the {$WWW_ROOT_PATH}.
+	# If the real domain exists, return a 200 status.
+	root * {$WWW_ROOT_PATH}
+	map {query.domain} {domain_input} {
+		default "{query.domain}"
+	}
+	import normalize_domain
+	@ask <<CEL
         path('/api/ask')
         && {real_domain} != ""
         && (file({'try_files': [{real_domain} + '/']}) || {$CADDY_HTTPS_ALLOW_ANY_HOST})
     CEL
-    handle @ask {
-        respond "Domain {real_domain} is available." 200
-    }
+	handle @ask {
+		respond "Domain {real_domain} is available." 200
+	}
 
-    # Handle webhooks.
-    @webhook path /api/webhook
-    handle @webhook {
-        rewrite * /.admin/webhook.php
-        php_fastcgi unix//var/run/php/php-fpm.sock
-    }
+	# Handle webhooks.
+	@webhook path /api/webhook
+	handle @webhook {
+		rewrite * /.admin/webhook.php
+		php_fastcgi unix//var/run/php/php-fpm.sock
+	}
 
-    # Default response.
-    respond "Invalid request." 400
+	# Default response.
+	respond "Invalid request." 400
 }
