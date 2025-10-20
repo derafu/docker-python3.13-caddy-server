@@ -149,9 +149,13 @@ EOF
             continue
         fi
 
-        # Extract process name and command
-        local process_name=$(echo "$line" | cut -d: -f1 | xargs)
-        local command=$(echo "$line" | cut -d: -f2- | xargs)
+        # Extract process name and command (preserve quotes)
+        local process_name
+        process_name=$(printf '%s' "$line" | cut -d: -f1)
+        local command
+        command=$(printf '%s' "$line" | cut -d: -f2-)
+        # Left-trim spaces from command only (do not strip quotes)
+        command="${command#${command%%[![:space:]]*}}"
 
         log_info "Processing: $process_name -> $command"
 
@@ -162,12 +166,15 @@ EOF
             local access_log="$LOG_DIR/gunicorn/$site_name-access.log"
             local error_log="$LOG_DIR/gunicorn/$site_name-error.log"
 
-            # Replace bind :8000 with unix socket
-            local gunicorn_cmd=$(echo "$command" | sed "s/--bind :8000/--bind unix:$socket_path/")
+            # Replace bind :8000 with unix socket (preserve content)
+            local gunicorn_cmd
+            gunicorn_cmd=$(printf '%s' "$command" | sed "s|--bind :8000|--bind unix:$socket_path|")
+            # Escape % so supervisord does not try to interpolate (e.g. %(h)s)
+            local gunicorn_cmd_escaped=${gunicorn_cmd//%/%%}
 
             cat >> "$config_file" << EOF
 [program:django-$site_name-web]
-command=$gunicorn_cmd
+command=$gunicorn_cmd_escaped
 directory=$current_path
 user=$APP_USER
 autostart=true
@@ -192,10 +199,12 @@ EOF
         elif [[ "$process_name" =~ ^celery_worker ]]; then
             # Configuration for Celery Workers
             local worker_log="$LOG_DIR/celery/$site_name-$process_name.log"
+            # Escape % for supervisord
+            local command_escaped=${command//%/%%}
 
             cat >> "$config_file" << EOF
 [program:django-$site_name-$process_name]
-command=$command
+command=$command_escaped
 directory=$current_path
 user=$APP_USER
 autostart=true
@@ -217,10 +226,12 @@ EOF
         elif [[ "$process_name" == "celery_beat" ]]; then
             # Configuration for Celery Beat
             local beat_log="$LOG_DIR/celery/$site_name-beat.log"
+            # Escape % for supervisord
+            local command_escaped=${command//%/%%}
 
             cat >> "$config_file" << EOF
 [program:django-$site_name-celery-beat]
-command=$command
+command=$command_escaped
 directory=$current_path
 user=$APP_USER
 autostart=true
@@ -242,10 +253,12 @@ EOF
         else
             # Generic configuration for other processes
             log_warning "Unrecognized process type: $process_name, using generic configuration"
+            # Escape % for supervisord
+            local command_escaped=${command//%/%%}
 
             cat >> "$config_file" << EOF
 [program:django-$site_name-$process_name]
-command=$command
+command=$command_escaped
 directory=$current_path
 user=$APP_USER
 autostart=true
