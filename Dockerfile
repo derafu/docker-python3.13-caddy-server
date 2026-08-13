@@ -99,6 +99,18 @@ RUN \
     && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends caddy \
+    && apt-get install -y --no-install-recommends \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libxkbcommon0 \
+    libatspi2.0-0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
     && rm -rf /var/lib/apt/lists/* \
     \
     # Create SSH directory.
@@ -182,11 +194,8 @@ COPY config/supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
 # Copy scripts.
 
-COPY scripts/start_gunicorn_supervisord.sh /scripts/start_gunicorn_supervisord.sh
-RUN chmod +x /scripts/start_gunicorn_supervisord.sh
-
-COPY scripts/start_celery_supervisord.sh /scripts/start_celery_supervisord.sh
-RUN chmod +x /scripts/start_celery_supervisord.sh
+COPY scripts/start_procfile_supervisord.sh /scripts/start_procfile_supervisord.sh
+RUN chmod +x /scripts/start_procfile_supervisord.sh
 
 RUN mkdir -p /run/gunicorn && chmod 777 /run/gunicorn
 
